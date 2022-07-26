@@ -89,7 +89,7 @@ def _parse_table(
                 value = fallback
             result[token] = value
     elif fallback is not None:
-        for token in _strings:
+        for token in map_:
             result[token] = fallback
 
     return result
