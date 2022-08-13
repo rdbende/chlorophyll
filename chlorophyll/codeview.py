@@ -6,6 +6,7 @@ from pathlib import Path
 from tkinter import ttk
 from tkinter.font import Font
 from typing import Any
+
 import pygments
 import pygments.lexers
 import toml
@@ -215,6 +216,7 @@ class CodeView(tkinter.Text):
 
     def grid(self, *args, **kwargs) -> None:
         self._frame.grid(*args, **kwargs)
+
     def place(self, *args, **kwargs) -> None:
         self._frame.place(*args, **kwargs)
 
