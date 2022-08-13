@@ -6,7 +6,6 @@ from pathlib import Path
 from tkinter import ttk
 from tkinter.font import Font
 from typing import Any
-
 import pygments
 import pygments.lexers
 import toml
@@ -52,6 +51,7 @@ class CodeView(tkinter.Text):
 
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
+        super().bind(f"<{contmand}-c>", self._copy)
         super().bind(f"<{contmand}-v>", self._paste)
         super().bind(f"<{contmand}-a>", self._select_all)
 
@@ -79,13 +79,23 @@ class CodeView(tkinter.Text):
 
         return "break"
 
+    def _copy(self, *_):
+        text = self.get("sel.first", "sel.last")
+        if not text:
+            text = self.get("insert linestart", "insert lineend")
+
+        self.clipboard_clear()
+        self.clipboard_append(text)
+
+        return "break"
+
     def _cmd_proxy(self, command: str, *args) -> Any:
         cmd = (self._orig, command) + args
         try:
             result = self.tk.call(cmd)
         except tkinter.TclError as e:
             if 'tagged with "sel"' in str(e):
-                return
+                return ""
             raise e from None
 
         if command == "insert":
@@ -205,7 +215,6 @@ class CodeView(tkinter.Text):
 
     def grid(self, *args, **kwargs) -> None:
         self._frame.grid(*args, **kwargs)
-
     def place(self, *args, **kwargs) -> None:
         self._frame.place(*args, **kwargs)
 
