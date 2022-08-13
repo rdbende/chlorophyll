@@ -221,8 +221,6 @@ class CodeView(tkinter.Text):
         self._frame.place(*args, **kwargs)
 
     def destroy(self) -> None:
-        for widget in self.tk.splitlist(
-            self.tk.eval(f"winfo children {self._frame._w}")
-        ):
-            self.tk.call("destroy", widget)
-        self.tk.call("destroy", self._frame._w)
+        for widget in self._frame.winfo_children():
+            tkinter.BaseWidget.destroy(widget)
+        tkinter.BaseWidget.destroy(self._frame)
