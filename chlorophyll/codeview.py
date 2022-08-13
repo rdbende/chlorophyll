@@ -220,14 +220,14 @@ class CodeView(tkinter.Text):
     def place(self, *args, **kwargs) -> None:
         self._frame.place(*args, **kwargs)
 
-    def pack_forget(self, *args, **kwargs) -> None:
-        self._frame.pack_forget(*args, **kwargs)
+    def pack_forget(self) -> None:
+        self._frame.pack_forget()
 
-    def grid_forget(self, *args, **kwargs) -> None:
-        self._frame.grid_forget(*args, **kwargs)
+    def grid_forget(self) -> None:
+        self._frame.grid_forget()
 
-    def place_forget(self, *args, **kwargs) -> None:
-        self._frame.place_forget(*args, **kwargs)
+    def place_forget(self) -> None:
+        self._frame.place_forget()
 
     def destroy(self) -> None:
         for widget in self.tk.splitlist(
