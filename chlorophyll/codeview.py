@@ -105,9 +105,11 @@ class CodeView(tkinter.Text):
                 self._highlight()
             else:
                 self.after_idle(lambda: self._highlight_lines(length))
+            self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
             self._highlight()
-
+            self.event_generate("<<ContentChanged>>")
+        
         return result
 
     def _setup_tags(self, tags: dict[str, str]) -> None:
