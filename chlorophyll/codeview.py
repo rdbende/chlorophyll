@@ -102,7 +102,8 @@ class CodeView(tkinter.Text):
         try:
             result = self.tk.call(cmd)
         except tkinter.TclError as e:
-            if 'tagged with "sel"' in str(e):
+            error = str(e)
+            if 'tagged with "sel"' in error or "nothing to" in error:
                 return ""
             raise e from None
 
@@ -116,7 +117,7 @@ class CodeView(tkinter.Text):
         elif command in {"replace", "delete"}:
             self._highlight()
             self.event_generate("<<ContentChanged>>")
-        
+
         return result
 
     def _setup_tags(self, tags: dict[str, str]) -> None:
