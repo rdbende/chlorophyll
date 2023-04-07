@@ -6,7 +6,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="chlorophyll",
-    version="0.1.1",
+    version="0.2.0",
     description="A module that fills your code with color - syntax highlighted text box widget for Tkinter.",
     author="rdbende",
     author_email="rdbende@gmail.com",
