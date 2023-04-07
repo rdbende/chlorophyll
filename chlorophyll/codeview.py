@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import tkinter
 from pathlib import Path
-from tkinter import ttk
+from tkinter import Event, TclError, ttk
 from tkinter.font import Font
 from typing import Any
 
@@ -55,6 +55,7 @@ class CodeView(tkinter.Text):
         super().bind(f"<{contmand}-c>", self._copy)
         super().bind(f"<{contmand}-v>", self._paste)
         super().bind(f"<{contmand}-a>", self._select_all)
+        super().bind(f"<{contmand}-Shift-Z>", self.redo)
 
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
@@ -67,6 +68,12 @@ class CodeView(tkinter.Text):
         self.tag_add("sel", "1.0", "end")
         self.mark_set("insert", "end")
         return "break"
+
+    def redo(self, event: Event | None = None) -> None:
+        try:
+            self.edit_redo()
+        except TclError:
+            pass
 
     def _paste(self, *_):
         insert = self.index(f"@0,0 + {self.cget('height') // 2} lines")
