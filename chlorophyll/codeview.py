@@ -108,7 +108,7 @@ class CodeView(tkinter.Text):
             raise e from None
 
         if command == "insert":
-            length = len(args[1].splitlines())
+            length = len(args[1].strip().splitlines())
             if length == 1:
                 self._highlight()
             else:
