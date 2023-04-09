@@ -13,7 +13,7 @@ setup(
     url="https://gitlab.com/rdbende/chlorophyll",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=["pygments", "toml"],
+    install_requires=["pygments", "toml", "tklinenums"],
     python_requires=">=3.7",
     license="MIT license",
     classifiers=[
