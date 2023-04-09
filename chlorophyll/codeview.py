@@ -249,24 +249,13 @@ class CodeView(Text):
             BaseWidget.destroy(widget)
         BaseWidget.destroy(self._frame)
 
-    def horizontal_scroll(
-        self,
-        first: str | float,
-        last: str | float,
-    ) -> "CodeView":
+    def horizontal_scroll(self, first: str | float, last: str | float) -> CodeView:
         self._hs.set(first, last)
 
-    def vertical_scroll(
-        self,
-        first: str | float,
-        last: str | float,
-    ) -> "CodeView":
+    def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
         self._vs.set(first, last)
         self._line_numbers.reload(self.cget("font"))
 
-    def scroll_line_update(
-        self,
-        event: Event | None = None,
-    ) -> "CodeView":
-        self.horizontal_scroll((xview := self.xview())[0], xview[1])
-        self.vertical_scroll((yview := self.yview())[0], yview[1])
+    def scroll_line_update(self, event: Event | None = None) -> CodeView:
+        self.horizontal_scroll(*self.xview())
+        self.vertical_scroll(*self.yview())
