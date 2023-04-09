@@ -262,8 +262,7 @@ class CodeView(Text):
         last: str | float,
     ) -> "CodeView":
         self._vs.set(first, last)
-        self._line_numbers.reload()  # The linenumber widget needs to be updated with a font or it will use a default font
-        # TODO: add a font attribute to the CodeView class and use that instead of the default font
+        self._line_numbers.reload(self.cget("font"))
 
     def scroll_line_update(
         self,
