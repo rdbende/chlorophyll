@@ -1,28 +1,28 @@
 from __future__ import annotations
 
-import contextlib
-import tkinter
+from contextlib import suppress
 from pathlib import Path
-from tkinter import Event, TclError, ttk
+from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any
 
 import pygments
 import pygments.lexers
-import toml
+from tklinenums import TkLineNumbers
+from toml import load
 
 from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
 
-class CodeView(tkinter.Text):
+class CodeView(Text):
     _w: str
     _builtin_color_schemes = {"ayu-dark", "ayu-light", "dracula", "mariana", "monokai"}
 
     def __init__(
         self,
-        master: tkinter.Misc | None = None,
+        master: Misc | None = None,
         lexer: pygments.lexers.Lexer = pygments.lexers.PythonLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
@@ -36,26 +36,31 @@ class CodeView(tkinter.Text):
         kwargs.setdefault("font", ("monospace", 11))
 
         super().__init__(self._frame, **kwargs)
-        super().grid(row=0, column=0, sticky="nswe")
+        super().grid(row=0, column=1, sticky="nswe")
 
+        self._line_numbers = TkLineNumbers(
+            self._frame, self, justify=kwargs.get("justify", "left")
+        )
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
 
-        self._hs.grid(row=1, column=0, sticky="we")
-        self._vs.grid(row=0, column=1, sticky="ns")
+        self._line_numbers.grid(row=0, column=0, sticky="ns")
+        self._hs.grid(row=1, column=1, sticky="we")
+        self._vs.grid(row=0, column=2, sticky="ns")
 
         super().configure(
-            xscrollcommand=self._hs.set,
-            yscrollcommand=self._vs.set,
+            xscrollcommand=self.horizontal_scroll,
+            yscrollcommand=self.vertical_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
-        super().bind(f"<{contmand}-c>", self._copy)
-        super().bind(f"<{contmand}-v>", self._paste)
-        super().bind(f"<{contmand}-a>", self._select_all)
-        super().bind(f"<{contmand}-Shift-Z>", self.redo)
+        super().bind(f"<{contmand}-c>", self._copy, add=True)
+        super().bind(f"<{contmand}-v>", self._paste, add=True)
+        super().bind(f"<{contmand}-a>", self._select_all, add=True)
+        super().bind(f"<{contmand}-Shift-Z>", self.redo, add=True)
+        super().bind("<<ContentChanged>>", self.scroll_line_update, add=True)
 
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
@@ -78,7 +83,7 @@ class CodeView(tkinter.Text):
     def _paste(self, *_):
         insert = self.index(f"@0,0 + {self.cget('height') // 2} lines")
 
-        with contextlib.suppress(tkinter.TclError):
+        with suppress(TclError):
             self.delete("sel.first", "sel.last")
             self.tag_remove("sel", "1.0", "end")
             self.insert("insert", self.clipboard_get())
@@ -101,7 +106,7 @@ class CodeView(tkinter.Text):
         cmd = (self._orig, command) + args
         try:
             result = self.tk.call(cmd)
-        except tkinter.TclError as e:
+        except TclError as e:
             error = str(e)
             if 'tagged with "sel"' in error or "nothing to" in error:
                 return ""
@@ -182,9 +187,9 @@ class CodeView(tkinter.Text):
             isinstance(color_scheme, str)
             and color_scheme in self._builtin_color_schemes
         ):
-            color_scheme = toml.load(color_schemes_dir / f"{color_scheme}.toml")
+            color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
-            color_scheme = toml.load(color_schemes_dir / "dracula.toml")
+            color_scheme = load(color_schemes_dir / "dracula.toml")
 
         assert isinstance(
             color_scheme, dict
@@ -241,5 +246,16 @@ class CodeView(tkinter.Text):
 
     def destroy(self) -> None:
         for widget in self._frame.winfo_children():
-            tkinter.BaseWidget.destroy(widget)
-        tkinter.BaseWidget.destroy(self._frame)
+            BaseWidget.destroy(widget)
+        BaseWidget.destroy(self._frame)
+
+    def horizontal_scroll(self, first: str | float, last: str | float) -> CodeView:
+        self._hs.set(first, last)
+
+    def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
+        self._vs.set(first, last)
+        self._line_numbers.reload(self.cget("font"))
+
+    def scroll_line_update(self, event: Event | None = None) -> CodeView:
+        self.horizontal_scroll(*self.xview())
+        self.vertical_scroll(*self.yview())
