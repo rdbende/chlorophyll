@@ -254,7 +254,7 @@ class CodeView(Text):
 
     def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
         self._vs.set(first, last)
-        self._line_numbers.reload(self.tk.splitlist(self.cget("font")))
+        self._line_numbers.reload(self.cget("font"))
 
     def scroll_line_update(self, event: Event | None = None) -> CodeView:
         self.horizontal_scroll(*self.xview())
