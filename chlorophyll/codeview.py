@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from tklinenums import TkLineNumbers
 from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
@@ -9,6 +8,7 @@ from typing import Any
 
 import pygments
 import pygments.lexers
+from tklinenums import TkLineNumbers
 from toml import load
 
 from .schemeparser import _parse_scheme
@@ -38,8 +38,9 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
-        self._line_numbers.bind("<<ContentChanged>>", self._line_numbers.redraw, add=True)
+        self._line_numbers = TkLineNumbers(
+            self._frame, self, justify=kwargs.get("justify", "left")
+        )
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
 
@@ -48,8 +49,8 @@ class CodeView(Text):
         self._vs.grid(row=0, column=2, sticky="ns")
 
         super().configure(
-            xscrollcommand=self._hs.set,
-            yscrollcommand=self._vs.set,
+            xscrollcommand=self.horizontal_scroll,
+            yscrollcommand=self.vertical_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
@@ -59,6 +60,7 @@ class CodeView(Text):
         super().bind(f"<{contmand}-v>", self._paste, add=True)
         super().bind(f"<{contmand}-a>", self._select_all, add=True)
         super().bind(f"<{contmand}-Shift-Z>", self.redo, add=True)
+        super().bind("<<ContentChanged>>", self.scroll_line_update, add=True)
 
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
@@ -246,3 +248,26 @@ class CodeView(Text):
         for widget in self._frame.winfo_children():
             BaseWidget.destroy(widget)
         BaseWidget.destroy(self._frame)
+
+    def horizontal_scroll(
+        self,
+        first: str | float,
+        last: str | float,
+    ) -> "CodeView":
+        self._hs.set(first, last)
+
+    def vertical_scroll(
+        self,
+        first: str | float,
+        last: str | float,
+    ) -> "CodeView":
+        self._vs.set(first, last)
+        self._line_numbers.reload()  # The linenumber widget needs to be updated with a font or it will use a default font
+        # TODO: add a font attribute to the CodeView class and use that instead of the default font
+
+    def scroll_line_update(
+        self,
+        event: Event | None = None,
+    ) -> "CodeView":
+        self.horizontal_scroll((xview := self.xview())[0], xview[1])
+        self.vertical_scroll((yview := self.yview())[0], yview[1])

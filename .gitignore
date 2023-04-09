@@ -130,6 +130,3 @@ dmypy.json
 
 # Mac stuff
 .DS_Store
-
-# Other
-test.py
