@@ -180,6 +180,20 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
+    def hightlight_area(self, start_line: int, end_line: int) -> None:
+        for i in range(start_line, end_line + 1):
+            for tag in self.tag_names(index=None):
+                if tag.startswith("Token"):
+                    self.tag_remove(tag, f"{i}.0", f"{i}.end")
+            
+            line_text = self.get(f"{i}.0", f"{i}.end")
+            start_col = 0
+
+            for token, text in pygments.lex(line_text, self._lexer()):
+                end_col = start_col + len(text)
+                self.tag_add(str(token), f"{i}.{start_col}", f"{i}.{end_col}")
+                start_col = end_col
+
     def _set_color_scheme(
         self, color_scheme: dict[str, dict[str, str | int]] | str | None
     ) -> None:
@@ -259,17 +273,3 @@ class CodeView(Text):
     def scroll_line_update(self, event: Event | None = None) -> CodeView:
         self.horizontal_scroll(*self.xview())
         self.vertical_scroll(*self.yview())
-
-    def hightlight_area(self, start_line: int, end_line: int) -> None:
-        for i in range(start_line, end_line + 1):
-            for tag in self.tag_names(index=None):
-                if tag.startswith("Token"):
-                    self.tag_remove(tag, f"{i}.0", f"{i}.end")
-            
-            line_text = self.get(f"{i}.0", f"{i}.end")
-            start_col = 0
-
-            for token, text in pygments.lex(line_text, self._lexer()):
-                end_col = start_col + len(text)
-                self.tag_add(str(token), f"{i}.{start_col}", f"{i}.{end_col}")
-                start_col = end_col
