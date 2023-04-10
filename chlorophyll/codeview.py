@@ -113,11 +113,10 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            length = len(args[1].lstrip().splitlines())
-            if length == 1:
-                self._highlight()
-            else:
-                self.after_idle(lambda: self._highlight_lines(length))
+            # Use self.highlight_area()
+            location = args[0]
+            print(location)
+            self.highlight_area(location)
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
             self._highlight()
@@ -145,24 +144,6 @@ class CodeView(Text):
             self.tag_add(str(token), f"{line}.{start_col}", f"{line}.{end_col}")
             start_col = end_col
 
-    def _highlight_lines(self, line_count: int = 1) -> None:
-        current_index = self.index("insert")
-        start_index = self.index(f"insert linestart - {line_count} lines")
-
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, start_index, current_index)
-
-        lines = self.get(start_index, current_index)
-        lexer = self._lexer()
-
-        for token, text in pygments.lex(lines, lexer):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
-
     def highlight_all(self) -> None:
         start_index = "1.0"
 
@@ -180,7 +161,12 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def highlight_area(self, start_line: int, end_line: int) -> None:
+    def highlight_area(self, str_location: str | None = None, start_line: int | None = None, end_line: int | None = None) -> None:
+        if str_location is not None:
+            end_line = (start_line := int(self.index(str_location).split(".")[0])-2)+1 #Doesn't work
+            print(start_line, end_line)
+        elif start_line is None and end_line is None:
+            raise ValueError("Must provide either a string location or start and end lines")
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
