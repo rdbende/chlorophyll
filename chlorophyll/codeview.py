@@ -113,13 +113,15 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            # Use self.highlight_area()
-            location = args[0]
-            print(location)
-            self.highlight_area(location)
+            area = int(self.index(args[0]).split(".")[0]) - args[1].count("\n")
+            self.highlight_area(area)
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
-            self._highlight()
+            start_line = int(self.index(args[0]).split(".")[0])
+            if "end" in args[1]:
+                start_line -= args[2].count("\n") + 1
+            end_line = int(self.index(args[1]).split(".")[0])
+            self.highlight_area(None, start_line, end_line)
             self.event_generate("<<ContentChanged>>")
 
         return result
@@ -161,12 +163,18 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def highlight_area(self, str_location: str | None = None, start_line: int | None = None, end_line: int | None = None) -> None:
-        if str_location is not None:
-            end_line = (start_line := int(self.index(str_location).split(".")[0])-2)+1 #Doesn't work
-            print(start_line, end_line)
+    def highlight_area(
+        self,
+        area: int | None = None,
+        start_line: int | None = None,
+        end_line: int | None = None,
+    ) -> None:
+        if area is not None:
+            start_line, end_line = str(area - 1), str(area)
         elif start_line is None and end_line is None:
-            raise ValueError("Must provide either a string location or start and end lines")
+            raise ValueError(
+                "Must provide either a string location or start and end lines"
+            )
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
