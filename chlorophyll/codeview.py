@@ -8,6 +8,7 @@ from typing import Any
 
 import pygments
 import pygments.lexers
+from pyperclip import copy
 from tklinenums import TkLineNumbers
 from toml import load
 
@@ -97,8 +98,7 @@ class CodeView(Text):
         if not text:
             text = self.get("insert linestart", "insert lineend")
 
-        self.clipboard_clear()
-        self.clipboard_append(text)
+        copy(text)
 
         return "break"
 
