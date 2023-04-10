@@ -180,7 +180,7 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def hightlight_area(self, start_line: int, end_line: int) -> None:
+    def highlight_area(self, start_line: int, end_line: int) -> None:
         for i in range(start_line, end_line + 1):
             for tag in self.tag_names(index=None):
                 if tag.startswith("Token"):
