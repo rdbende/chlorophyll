@@ -183,12 +183,11 @@ class CodeView(Text):
     def highlight_area(self, start_line: int, end_line: int) -> None:
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
-                self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
-        text = self.get(f"{start_line}.0", f"{end_line}.end")
-        lexer = self._lexer()
-        tokens = pygments.lex(text, lexer)
+                self.tag_remove(tag, f"{start_line} linestart", f"{end_line} lineend")
+
+        text = self.get(f"{start_line} linestart", f"{end_line} lineend")
         start_index = f"{start_line}.0"
-        for token, text in tokens:
+        for token, text in pygments.lex(text, self._lexer()):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} indices")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
