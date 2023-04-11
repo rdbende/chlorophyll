@@ -103,6 +103,8 @@ class CodeView(Text):
     def _cmd_proxy(self, command: str, *args) -> Any:
         if command in {"insert", "delete", "replace"}:
             start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
+            if len(args) == 3:
+                end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0])-1
         try:
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
@@ -122,7 +124,7 @@ class CodeView(Text):
                 )
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
-            self.highlight_line(f"{start_line}.0")
+            self.highlight_area(start_line, end_line)
             self.event_generate("<<ContentChanged>>")
 
         return result
