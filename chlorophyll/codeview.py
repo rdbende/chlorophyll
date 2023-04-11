@@ -107,6 +107,7 @@ class CodeView(Text):
             start_line = int(
                 str(self.tk.call(self._orig, "index", args[0])).split(".")[0]
             )
+            end_line = start_line
             if len(args) == 3:
                 end_line = (
                     int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0])
@@ -121,7 +122,8 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            start_line -= 1
+            if not args[0] == "insert":
+                start_line -= 1
             lines = args[1].count("\n")
             if lines == 1:
                 self.highlight_line(f"{start_line}.0")
