@@ -115,12 +115,12 @@ class CodeView(Text):
 
         if command == "insert":
             start_line -= 1
-            lines = len(args[1].splitlines())
+            lines = args[1].count("\n")
             if lines == 1:
                 self.highlight_line(f"{start_line}.0")
             else:
                 self.highlight_area(
-                    start_line + (lines - len(args[1].lstrip().splitlines())), start_line + lines
+                    start_line + (lines - args[1].lstrip().count("\n")), start_line + lines
                 )
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
