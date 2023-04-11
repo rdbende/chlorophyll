@@ -134,7 +134,10 @@ class CodeView(Text):
                 )
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
-            self.highlight_area(start_line, end_line)
+            if start_line == end_line:
+                self.highlight_line(f"{start_line}.0")
+            else:
+                self.highlight_area(start_line, end_line)
             self.event_generate("<<ContentChanged>>")
 
         return result
