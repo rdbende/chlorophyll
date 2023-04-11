@@ -101,9 +101,8 @@ class CodeView(Text):
         return "break"
 
     def _cmd_proxy(self, command: str, *args) -> Any:
-        if command == "insert":
+        if command in {"insert", "delete"}:
             start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
-            start_line -= 1
         try:
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
@@ -113,17 +112,17 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            line_num = len(args[1].splitlines())
-            self.highlight_area(
-                start_line + (line_num - len(args[1].lstrip().splitlines())), start_line + line_num
-            )
+            lines = len(args[1].splitlines())
+            if lines == 1:
+                self.highlight_line(f"{start_line}.0")
+            else:
+                start_line -= 1
+                self.highlight_area(
+                    start_line + (lines - len(args[1].lstrip().splitlines())), start_line + lines
+                )
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
-            start_line = int(self.index(args[0]).split(".")[0])
-            if "end" in args[1]:
-                start_line -= args[2].count("\n") + 1
-            end_line = int(self.index(args[1]).split(".")[0])
-            self.highlight_area(None, start_line, end_line)
+            self.highlight_line(f"{start_line}.0")
             self.event_generate("<<ContentChanged>>")
 
         return result
@@ -133,19 +132,20 @@ class CodeView(Text):
             if isinstance(value, str):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
-    def _highlight(self) -> None:
-        line = int(self.index("insert").split(".")[0])
-
+    def highlight_line(self, index: str) -> None:
+        line_num = int(self.index(index).split(".")[0])
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
-                self.tag_remove(tag, f"{line}.0", f"{line}.end")
+                self.tag_remove(tag, f"{line_num}.0", f"{line_num}.end")
 
-        line_text = self.get(f"{line}.0", f"{line}.end")
+        line_text = self.get(f"{line_num}.0", f"{line_num}.end")
         start_col = 0
 
         for token, text in pygments.lex(line_text, self._lexer()):
+            token = str(token)
             end_col = start_col + len(text)
-            self.tag_add(str(token), f"{line}.{start_col}", f"{line}.{end_col}")
+            if token not in {"Token.Text.Whitespace", "Token.Text"}:
+                self.tag_add(token, f"{line_num}.{start_col}", f"{line_num}.{end_col}")
             start_col = end_col
 
     def highlight_all(self) -> None:
