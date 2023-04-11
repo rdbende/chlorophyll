@@ -39,9 +39,7 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(
-            self._frame, self, justify=kwargs.get("justify", "left")
-        )
+        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
 
@@ -103,9 +101,11 @@ class CodeView(Text):
         return "break"
 
     def _cmd_proxy(self, command: str, *args) -> Any:
-        cmd = (self._orig, command) + args
+        if command == "insert":
+            start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
+            start_line -= 1
         try:
-            result = self.tk.call(cmd)
+            result = self.tk.call(self._orig, command, *args)
         except TclError as e:
             error = str(e)
             if 'tagged with "sel"' in error or "nothing to" in error:
@@ -113,8 +113,10 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            area = int(self.index(args[0]).split(".")[0]) - args[1].count("\n")
-            self.highlight_area(area)
+            line_num = len(args[1].splitlines())
+            self.highlight_area(
+                start_line + (line_num - len(args[1].lstrip().splitlines())), start_line + line_num
+            )
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
             start_line = int(self.index(args[0]).split(".")[0])
@@ -163,18 +165,7 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def highlight_area(
-        self,
-        area: int | None = None,
-        start_line: int | None = None,
-        end_line: int | None = None,
-    ) -> None:
-        if area is not None:
-            start_line, end_line = str(area - 1), str(area)
-        elif start_line is None and end_line is None:
-            raise ValueError(
-                "Must provide either a string location or start and end lines"
-            )
+    def highlight_area(self, start_line: int | None = None, end_line: int | None = None) -> None:
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
@@ -188,20 +179,13 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def _set_color_scheme(
-        self, color_scheme: dict[str, dict[str, str | int]] | str | None
-    ) -> None:
-        if (
-            isinstance(color_scheme, str)
-            and color_scheme in self._builtin_color_schemes
-        ):
+    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
+        if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
             color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
             color_scheme = load(color_schemes_dir / "dracula.toml")
 
-        assert isinstance(
-            color_scheme, dict
-        ), "Must be a dictionary or a built-in color scheme"
+        assert isinstance(color_scheme, dict), "Must be a dictionary or a built-in color scheme"
 
         config, tags = _parse_scheme(color_scheme)
         self.configure(**config)
