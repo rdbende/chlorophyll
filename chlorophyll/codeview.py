@@ -39,9 +39,7 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(
-            self._frame, self, justify=kwargs.get("justify", "left")
-        )
+        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
 
@@ -104,15 +102,10 @@ class CodeView(Text):
 
     def _cmd_proxy(self, command: str, *args) -> Any:
         if command in {"insert", "delete", "replace"}:
-            start_line = int(
-                str(self.tk.call(self._orig, "index", args[0])).split(".")[0]
-            )
+            start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
             end_line = start_line
             if len(args) == 3:
-                end_line = (
-                    int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0])
-                    - 1
-                )
+                end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
         try:
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
@@ -128,10 +121,7 @@ class CodeView(Text):
             if lines == 1:
                 self.highlight_line(f"{start_line}.0")
             else:
-                self.highlight_area(
-                    start_line + (lines - args[1].lstrip().count("\n")),
-                    start_line + lines,
-                )
+                self.highlight_area(start_line, start_line + lines)
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
             if start_line == end_line:
@@ -164,31 +154,29 @@ class CodeView(Text):
             start_col = end_col
 
     def highlight_all(self) -> None:
-        start_index = "1.0"
-
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, "1.0", "end")
 
         lines = self.get("1.0", "end")
-        lexer = self._lexer()
+        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
 
-        for token, text in pygments.lex(lines, lexer):
+        for token, text in pygments.lex(lines, self._lexer()):
             token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
+            end_index = self.index(f"{start_index} + {len(text)} chars")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def highlight_area(
-        self, start_line: int | None = None, end_line: int | None = None
-    ) -> None:
+    def highlight_area(self, start_line: int | None = None, end_line: int | None = None) -> None:
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
 
         text = self.get(f"{start_line}.0", f"{end_line}.end")
-        start_index = f"{start_line}.0"
+        line_offset = text.count("\n") - text.lstrip().count("\n")
+        start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
         for token, text in pygments.lex(text, self._lexer()):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} indices")
@@ -196,20 +184,13 @@ class CodeView(Text):
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def _set_color_scheme(
-        self, color_scheme: dict[str, dict[str, str | int]] | str | None
-    ) -> None:
-        if (
-            isinstance(color_scheme, str)
-            and color_scheme in self._builtin_color_schemes
-        ):
+    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
+        if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
             color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
             color_scheme = load(color_schemes_dir / "dracula.toml")
 
-        assert isinstance(
-            color_scheme, dict
-        ), "Must be a dictionary or a built-in color scheme"
+        assert isinstance(color_scheme, dict), "Must be a dictionary or a built-in color scheme"
 
         config, tags = _parse_scheme(color_scheme)
         self.configure(**config)
