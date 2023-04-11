@@ -101,7 +101,7 @@ class CodeView(Text):
         return "break"
 
     def _cmd_proxy(self, command: str, *args) -> Any:
-        if command in {"insert", "delete"}:
+        if command in {"insert", "delete", "replace"}:
             start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
         try:
             result = self.tk.call(self._orig, command, *args)
@@ -112,11 +112,11 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
+            start_line -= 1
             lines = len(args[1].splitlines())
             if lines == 1:
                 self.highlight_line(f"{start_line}.0")
             else:
-                start_line -= 1
                 self.highlight_area(
                     start_line + (lines - len(args[1].lstrip().splitlines())), start_line + lines
                 )
