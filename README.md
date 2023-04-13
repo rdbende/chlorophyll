@@ -4,7 +4,9 @@
 > This module is the successor to [`tkcode`](https://github.com/rdbende/tkcode), as it is deprecated - please do not use it any more.
 
 ## Description
-Chlorophyll provides the `CodeView` widget for tkinter, which is a `Text` widget with syntax highlighting, line numbers, and works as a simple code editor. It is written in Python and uses the [`pygments`](https://pygments.org/) library for syntax highlighting, the [`TkLineNums`](https://www.github.com/Moosems/TkLineNums) module for line numbers, [`pyperclip`](https://www.github.com/asweigart/pyperclip) for clipboard support, and [`toml`](https://www.github.com/uiri/toml) for color scheme support.
+Chlorophyll provides the `CodeView` widget for tkinter, which is a `Text` widget with syntax highlighting, line numbers, and works as a simple code editor. It is written in Python and uses the [`pygments`](https://pygments.org/) library for syntax highlighting and the [`TkLineNums`](https://www.github.com/Moosems/TkLineNums) module for line numbers.
+
+
 ## Installation
 
 `pip install chlorophyll`
