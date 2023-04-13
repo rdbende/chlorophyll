@@ -1,6 +1,6 @@
 <h1 align="center">Chlorophyll</h1>
 
-## **Warning ⚠️**
+> **Note**
 > This module is the successor to [`tkcode`](https://github.com/rdbende/tkcode), as it is deprecated - please do not use it any more.
 
 ## Description
