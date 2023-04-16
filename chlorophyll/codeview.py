@@ -6,7 +6,7 @@ from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any
 
-import pygments
+from pygments import lex
 import pygments.lexers
 from pyperclip import copy
 from tklinenums import TkLineNumbers
@@ -24,14 +24,14 @@ class CodeView(Text):
     def __init__(
         self,
         master: Misc | None = None,
-        lexer: pygments.lexers.Lexer = pygments.lexers.PythonLexer,
+        lexer: pygments.lexers.Lexer = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
         self._frame.grid_rowconfigure(0, weight=1)
-        self._frame.grid_columnconfigure(0, weight=1)
+        self._frame.grid_columnconfigure(1, weight=1)
 
         kwargs.setdefault("wrap", "none")
         kwargs.setdefault("font", ("monospace", 11))
@@ -40,16 +40,16 @@ class CodeView(Text):
         super().grid(row=0, column=1, sticky="nswe")
 
         self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
-        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
+        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
         self._line_numbers.grid(row=0, column=0, sticky="ns")
-        self._hs.grid(row=1, column=1, sticky="we")
         self._vs.grid(row=0, column=2, sticky="ns")
+        self._hs.grid(row=1, column=1, sticky="we")
 
         super().configure(
-            xscrollcommand=self.horizontal_scroll,
             yscrollcommand=self.vertical_scroll,
+            xscrollcommand=self.horizontal_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
@@ -146,7 +146,7 @@ class CodeView(Text):
         line_text = self.get(f"{line_num}.0", f"{line_num}.end")
         start_col = 0
 
-        for token, text in pygments.lex(line_text, self._lexer()):
+        for token, text in lex(line_text, self._lexer()):
             token = str(token)
             end_col = start_col + len(text)
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
@@ -162,7 +162,7 @@ class CodeView(Text):
         line_offset = lines.count("\n") - lines.lstrip().count("\n")
         start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
 
-        for token, text in pygments.lex(lines, self._lexer()):
+        for token, text in lex(lines, self._lexer()):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} chars")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
@@ -177,7 +177,7 @@ class CodeView(Text):
         text = self.get(f"{start_line}.0", f"{end_line}.end")
         line_offset = text.count("\n") - text.lstrip().count("\n")
         start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
-        for token, text in pygments.lex(text, self._lexer()):
+        for token, text in lex(text, self._lexer()):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} indices")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
