@@ -101,12 +101,12 @@ class CodeView(Text):
         return "break"
 
     def _cmd_proxy(self, command: str, *args) -> Any:
-        if command in {"insert", "delete", "replace"}:
-            start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
-            end_line = start_line
-            if len(args) == 3:
-                end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
         try:
+            if command in {"insert", "delete", "replace"}:
+                start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
+                end_line = start_line
+                if len(args) == 3:
+                    end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
             error = str(e)
