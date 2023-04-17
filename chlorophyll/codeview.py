@@ -6,7 +6,7 @@ from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any
 
-import pygments
+from pygments import lex
 import pygments.lexers
 from pyperclip import copy
 from tklinenums import TkLineNumbers
@@ -24,14 +24,14 @@ class CodeView(Text):
     def __init__(
         self,
         master: Misc | None = None,
-        lexer: pygments.lexers.Lexer = pygments.lexers.PythonLexer,
+        lexer: pygments.lexers.Lexer = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
         self._frame.grid_rowconfigure(0, weight=1)
-        self._frame.grid_columnconfigure(0, weight=1)
+        self._frame.grid_columnconfigure(1, weight=1)
 
         kwargs.setdefault("wrap", "none")
         kwargs.setdefault("font", ("monospace", 11))
@@ -39,19 +39,17 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(
-            self._frame, self, justify=kwargs.get("justify", "left")
-        )
-        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
+        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
+        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
         self._line_numbers.grid(row=0, column=0, sticky="ns")
-        self._hs.grid(row=1, column=1, sticky="we")
         self._vs.grid(row=0, column=2, sticky="ns")
+        self._hs.grid(row=1, column=1, sticky="we")
 
         super().configure(
-            xscrollcommand=self.horizontal_scroll,
             yscrollcommand=self.vertical_scroll,
+            xscrollcommand=self.horizontal_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
@@ -103,9 +101,13 @@ class CodeView(Text):
         return "break"
 
     def _cmd_proxy(self, command: str, *args) -> Any:
-        cmd = (self._orig, command) + args
         try:
-            result = self.tk.call(cmd)
+            if command in {"insert", "delete", "replace"}:
+                start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
+                end_line = start_line
+                if len(args) == 3:
+                    end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
+            result = self.tk.call(self._orig, command, *args)
         except TclError as e:
             error = str(e)
             if 'tagged with "sel"' in error or "nothing to" in error:
@@ -113,14 +115,19 @@ class CodeView(Text):
             raise e from None
 
         if command == "insert":
-            length = len(args[1].lstrip().splitlines())
-            if length == 1:
-                self._highlight()
+            if not args[0] == "insert":
+                start_line -= 1
+            lines = args[1].count("\n")
+            if lines == 1:
+                self.highlight_line(f"{start_line}.0")
             else:
-                self.after_idle(lambda: self._highlight_lines(length))
+                self.highlight_area(start_line, start_line + lines)
             self.event_generate("<<ContentChanged>>")
         elif command in {"replace", "delete"}:
-            self._highlight()
+            if start_line == end_line:
+                self.highlight_line(f"{start_line}.0")
+            else:
+                self.highlight_area(start_line, end_line)
             self.event_generate("<<ContentChanged>>")
 
         return result
@@ -130,84 +137,60 @@ class CodeView(Text):
             if isinstance(value, str):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
-    def _highlight(self) -> None:
-        line = int(self.index("insert").split(".")[0])
-
+    def highlight_line(self, index: str) -> None:
+        line_num = int(self.index(index).split(".")[0])
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
-                self.tag_remove(tag, f"{line}.0", f"{line}.end")
+                self.tag_remove(tag, f"{line_num}.0", f"{line_num}.end")
 
-        line_text = self.get(f"{line}.0", f"{line}.end")
+        line_text = self.get(f"{line_num}.0", f"{line_num}.end")
         start_col = 0
 
-        for token, text in pygments.lex(line_text, self._lexer()):
+        for token, text in lex(line_text, self._lexer()):
+            token = str(token)
             end_col = start_col + len(text)
-            self.tag_add(str(token), f"{line}.{start_col}", f"{line}.{end_col}")
+            if token not in {"Token.Text.Whitespace", "Token.Text"}:
+                self.tag_add(token, f"{line_num}.{start_col}", f"{line_num}.{end_col}")
             start_col = end_col
 
-    def _highlight_lines(self, line_count: int = 1) -> None:
-        current_index = self.index("insert")
-        start_index = self.index(f"insert linestart - {line_count} lines")
-
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, start_index, current_index)
-
-        lines = self.get(start_index, current_index)
-        lexer = self._lexer()
-
-        for token, text in pygments.lex(lines, lexer):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
-
     def highlight_all(self) -> None:
-        start_index = "1.0"
-
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, "1.0", "end")
 
         lines = self.get("1.0", "end")
-        lexer = self._lexer()
+        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
 
-        for token, text in pygments.lex(lines, lexer):
+        for token, text in lex(lines, self._lexer()):
             token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
+            end_index = self.index(f"{start_index} + {len(text)} chars")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def highlight_area(self, start_line: int, end_line: int) -> None:
+    def highlight_area(self, start_line: int | None = None, end_line: int | None = None) -> None:
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
 
         text = self.get(f"{start_line}.0", f"{end_line}.end")
-        start_index = f"{start_line}.0"
-        for token, text in pygments.lex(text, self._lexer()):
+        line_offset = text.count("\n") - text.lstrip().count("\n")
+        start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
+        for token, text in lex(text, self._lexer()):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} indices")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
                 self.tag_add(token, start_index, end_index)
             start_index = end_index
 
-    def _set_color_scheme(
-        self, color_scheme: dict[str, dict[str, str | int]] | str | None
-    ) -> None:
-        if (
-            isinstance(color_scheme, str)
-            and color_scheme in self._builtin_color_schemes
-        ):
+    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
+        if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
             color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
             color_scheme = load(color_schemes_dir / "dracula.toml")
 
-        assert isinstance(
-            color_scheme, dict
-        ), "Must be a dictionary or a built-in color scheme"
+        assert isinstance(color_scheme, dict), "Must be a dictionary or a built-in color scheme"
 
         config, tags = _parse_scheme(color_scheme)
         self.configure(**config)
@@ -268,7 +251,7 @@ class CodeView(Text):
 
     def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
         self._vs.set(first, last)
-        self._line_numbers.reload()
+        self._line_numbers.redraw()
 
     def scroll_line_update(self, event: Event | None = None) -> CodeView:
         self.horizontal_scroll(*self.xview())
