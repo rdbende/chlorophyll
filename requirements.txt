@@ -1,2 +1,2 @@
-tklinenums>=1.6.2
+tklinenums>=1.6.3
 pyperclip
