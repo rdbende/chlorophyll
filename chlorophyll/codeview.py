@@ -4,10 +4,13 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
+from _tkinter import Tcl_Obj
 from typing import Any
 
-from pygments import lex
 import pygments.lexers
+from pygments import lex  # noqa: F401
+
+# Currently not used while the highlight method is not implemented
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 from toml import load
@@ -29,30 +32,37 @@ class CodeView(Text):
         tab_width: int = 4,
         **kwargs,
     ) -> None:
+        # Set up the frame
         self._frame = ttk.Frame(master)
         self._frame.grid_rowconfigure(0, weight=1)
         self._frame.grid_columnconfigure(1, weight=1)
 
+        # Set kwargs
         kwargs.setdefault("wrap", "none")
         kwargs.setdefault("font", ("monospace", 11))
 
+        # Finish setting up the text widget
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
+        # Set up the line numbers and scrollbars
         self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
+        # Grid the line numbers and scrollbars
         self._line_numbers.grid(row=0, column=0, sticky="ns")
         self._vs.grid(row=0, column=2, sticky="ns")
         self._hs.grid(row=1, column=1, sticky="we")
 
+        # Configure the text widget
         super().configure(
             yscrollcommand=self.vertical_scroll,
             xscrollcommand=self.horizontal_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
+        # Set up the key bindings
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
         super().bind(f"<{contmand}-c>", self._copy, add=True)
@@ -61,10 +71,17 @@ class CodeView(Text):
         super().bind(f"<{contmand}-Shift-Z>", self.redo, add=True)
         super().bind("<<ContentChanged>>", self.scroll_line_update, add=True)
 
+        # Set up the proxy
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
         self.tk.createcommand(self._w, self._cmd_proxy)
 
+        # Create any necessary variables
+        self._current_text: str = self.get("1.0", "end-1c")
+        self._current_visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
+
+        # Set up the lexer and color scheme along with the MLCDS tag
+        self.tag_configure("MLCDS")
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
 
@@ -79,7 +96,7 @@ class CodeView(Text):
         except TclError:
             pass
 
-    def _paste(self, *_):
+    def _paste(self, *_) -> str:
         insert = self.index(f"@0,0 + {self.cget('height') // 2} lines")
 
         with suppress(TclError):
@@ -91,7 +108,7 @@ class CodeView(Text):
 
         return "break"
 
-    def _copy(self, *_):
+    def _copy(self, *_) -> str:
         text = self.get("sel.first", "sel.last")
         if not text:
             text = self.get("insert linestart", "insert lineend")
@@ -102,11 +119,6 @@ class CodeView(Text):
 
     def _cmd_proxy(self, command: str, *args) -> Any:
         try:
-            if command in {"insert", "delete", "replace"}:
-                start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
-                end_line = start_line
-                if len(args) == 3:
-                    end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
             error = str(e)
@@ -114,20 +126,8 @@ class CodeView(Text):
                 return ""
             raise e from None
 
-        if command == "insert":
-            if not args[0] == "insert":
-                start_line -= 1
-            lines = args[1].count("\n")
-            if lines == 1:
-                self.highlight_line(f"{start_line}.0")
-            else:
-                self.highlight_area(start_line, start_line + lines)
-            self.event_generate("<<ContentChanged>>")
-        elif command in {"replace", "delete"}:
-            if start_line == end_line:
-                self.highlight_line(f"{start_line}.0")
-            else:
-                self.highlight_area(start_line, end_line)
+        if command in ("insert", "replace", "delete"):
+            self.highlight()
             self.event_generate("<<ContentChanged>>")
 
         return result
@@ -137,52 +137,51 @@ class CodeView(Text):
             if isinstance(value, str):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
-    def highlight_line(self, index: str) -> None:
-        line_num = int(self.index(index).split(".")[0])
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, f"{line_num}.0", f"{line_num}.end")
+    def highlight(self) -> None:
+        """
+        Plan:
+        1. Create a new tag named "MLCDS" to remember where Docstrings (DS), Multi Line Comments (MLCs),
+        and backstick code areas (markdown) start and end. This tag should not start with "Token" so
+        that it is not deleted later.
+        2. Make a method that takes the tokens and tags and areas to remove and returns the tags without
+        those areas.
+        3. When highlight() runs, check if anything has changed in the text widget. If not, return.
+        (Things to look for include viewable area, text, and so on.)
+        4. Update the code to add MLCDS tags to the text widget where necessary. If a line starts or
+        ends with a Docstring or MLC, add an MLCDS tag to the entire line.
+        5. When the visible area of the text widget changes, get the visible area, visible text, and
+        line offset, as before.
+        6. Work with the MLCDS tags to add the necessary starts and ends to the visible text and then lex
+        it using Pygments.
+        7. Splice the tags to remove parts that are not visible (columns to the left or right of the visible
+        area) and remove any tags that are on emoji characters.
+        8. Add the remaining tags to the visible text and display it in the text widget.
+        9. Not in method: update the docs when this is done.
+        10. Also not in method: Make sure that when typing, the typing area is viewable (see()).
+        """
 
-        line_text = self.get(f"{line_num}.0", f"{line_num}.end")
-        start_col = 0
+        # Get visible area and text
+        visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
+        visible_text: str = self.get(*visible_area)
 
-        for token, text in lex(line_text, self._lexer()):
-            token = str(token)
-            end_col = start_col + len(text)
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, f"{line_num}.{start_col}", f"{line_num}.{end_col}")
-            start_col = end_col
+        # Check if anything has changed
+        if visible_area == self._current_visible_area and visible_text == self._current_text:
+            return
 
-    def highlight_all(self) -> None:
+        # Get line offset
+        line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")  # noqa: F841
+        # Not used yet (remove F841 when used)
+
+        # Update MLCDS tags if necessary
+        for tag in ("Token.Literal.String.Doc", "Token.Comment.Multiline", "Token.Literal.String.Backtick"):
+            # Check if any of them are in the visible area
+            tag_ranges: tuple[Tcl_Obj]= self.tag_ranges(tag)
+
+
+        # Remove Token tags from 1.0 to end (MLCDS - Multi Line Comment | Docstring tag is not removed)
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, "1.0", "end")
-
-        lines = self.get("1.0", "end")
-        line_offset = lines.count("\n") - lines.lstrip().count("\n")
-        start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
-
-        for token, text in lex(lines, self._lexer()):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} chars")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
-
-    def highlight_area(self, start_line: int | None = None, end_line: int | None = None) -> None:
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
-
-        text = self.get(f"{start_line}.0", f"{end_line}.end")
-        line_offset = text.count("\n") - text.lstrip().count("\n")
-        start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
-        for token, text in lex(text, self._lexer()):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
 
     def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
         if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
@@ -196,12 +195,12 @@ class CodeView(Text):
         self.configure(**config)
         self._setup_tags(tags)
 
-        self.highlight_all()
+        self.highlight()
 
     def _set_lexer(self, lexer: pygments.lexers.Lexer) -> None:
         self._lexer = lexer
 
-        self.highlight_all()
+        self.highlight()
 
     def __setitem__(self, key: str, value) -> None:
         self.configure(**{key: value})
@@ -246,13 +245,14 @@ class CodeView(Text):
             BaseWidget.destroy(widget)
         BaseWidget.destroy(self._frame)
 
-    def horizontal_scroll(self, first: str | float, last: str | float) -> CodeView:
+    def horizontal_scroll(self, first: str | float, last: str | float) -> None:
         self._hs.set(first, last)
 
-    def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
+    def vertical_scroll(self, first: str | float, last: str | float) -> None:
+        self.highlight()
         self._vs.set(first, last)
         self._line_numbers.redraw()
 
-    def scroll_line_update(self, event: Event | None = None) -> CodeView:
+    def scroll_line_update(self, event: Event | None = None) -> None:
         self.horizontal_scroll(*self.xview())
         self.vertical_scroll(*self.yview())
