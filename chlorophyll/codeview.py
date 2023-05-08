@@ -4,6 +4,7 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
+from _tkinter import Tcl_Obj
 from typing import Any
 
 import pygments.lexers
@@ -31,30 +32,37 @@ class CodeView(Text):
         tab_width: int = 4,
         **kwargs,
     ) -> None:
+        # Set up the frame
         self._frame = ttk.Frame(master)
         self._frame.grid_rowconfigure(0, weight=1)
         self._frame.grid_columnconfigure(1, weight=1)
 
+        # Set kwargs
         kwargs.setdefault("wrap", "none")
         kwargs.setdefault("font", ("monospace", 11))
 
+        # Finish setting up the text widget
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
+        # Set up the line numbers and scrollbars
         self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
+        # Grid the line numbers and scrollbars
         self._line_numbers.grid(row=0, column=0, sticky="ns")
         self._vs.grid(row=0, column=2, sticky="ns")
         self._hs.grid(row=1, column=1, sticky="we")
 
+        # Configure the text widget
         super().configure(
             yscrollcommand=self.vertical_scroll,
             xscrollcommand=self.horizontal_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
+        # Set up the key bindings
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
         super().bind(f"<{contmand}-c>", self._copy, add=True)
@@ -63,10 +71,16 @@ class CodeView(Text):
         super().bind(f"<{contmand}-Shift-Z>", self.redo, add=True)
         super().bind("<<ContentChanged>>", self.scroll_line_update, add=True)
 
+        # Set up the proxy
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
         self.tk.createcommand(self._w, self._cmd_proxy)
 
+        # Create any necessary variables
+        self._current_text: str = self.get("1.0", "end-1c")
+        self._current_visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
+
+        # Set up the lexer and color scheme along with the MLCDS tag
         self.tag_configure("MLCDS")
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
@@ -146,13 +160,23 @@ class CodeView(Text):
         10. Also not in method: Make sure that when typing, the typing area is viewable (see()).
         """
 
-        # Get visible area, text, and line offset
+        # Get visible area and text
         visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
         visible_text: str = self.get(*visible_area)
+
+        # Check if anything has changed
+        if visible_area == self._current_visible_area and visible_text == self._current_text:
+            return
+
+        # Get line offset
         line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")  # noqa: F841
         # Not used yet (remove F841 when used)
 
-        # Update MLCDS tags where necessary
+        # Update MLCDS tags if necessary
+        for tag in ("Token.Literal.String.Doc", "Token.Comment.Multiline", "Token.Literal.String.Backtick"):
+            # Check if any of them are in the visible area
+            tag_ranges: tuple[Tcl_Obj]= self.tag_ranges(tag)
+
 
         # Remove Token tags from 1.0 to end (MLCDS - Multi Line Comment | Docstring tag is not removed)
         for tag in self.tag_names(index=None):
