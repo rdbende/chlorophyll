@@ -16,7 +16,12 @@ from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
+def return_self(func):
+    def wrapper(self=None, *args, **kwargs):
+        func(self, *args, **kwargs)
+        return self
 
+    return wrapper
 class CodeView(Text):
     _w: str
     _builtin_color_schemes = {"ayu-dark", "ayu-light", "dracula", "mariana", "monokai"}
@@ -73,13 +78,14 @@ class CodeView(Text):
         self.mark_set("insert", "end")
         return "break"
 
-    def redo(self, event: Event | None = None) -> None:
+    @return_self
+    def redo(self, event: Event | None = None) -> CodeView:
         try:
             self.edit_redo()
         except TclError:
             pass
 
-    def _paste(self, *_):
+    def _paste(self, *_) -> str:
         insert = self.index(f"@0,0 + {self.cget('height') // 2} lines")
 
         with suppress(TclError):
@@ -91,7 +97,7 @@ class CodeView(Text):
 
         return "break"
 
-    def _copy(self, *_):
+    def _copy(self, *_) -> str:
         text = self.get("sel.first", "sel.last")
         if not text:
             text = self.get("insert linestart", "insert lineend")
@@ -102,11 +108,6 @@ class CodeView(Text):
 
     def _cmd_proxy(self, command: str, *args) -> Any:
         try:
-            if command in {"insert", "delete", "replace"}:
-                start_line = int(str(self.tk.call(self._orig, "index", args[0])).split(".")[0])
-                end_line = start_line
-                if len(args) == 3:
-                    end_line = int(str(self.tk.call(self._orig, "index", args[1])).split(".")[0]) - 1
             result = self.tk.call(self._orig, command, *args)
         except TclError as e:
             error = str(e)
@@ -114,77 +115,42 @@ class CodeView(Text):
                 return ""
             raise e from None
 
-        if command == "insert":
-            if not args[0] == "insert":
-                start_line -= 1
-            lines = args[1].count("\n")
-            if lines == 1:
-                self.highlight_line(f"{start_line}.0")
-            else:
-                self.highlight_area(start_line, start_line + lines)
-            self.event_generate("<<ContentChanged>>")
-        elif command in {"replace", "delete"}:
-            if start_line == end_line:
-                self.highlight_line(f"{start_line}.0")
-            else:
-                self.highlight_area(start_line, end_line)
+        if command in ("insert", "replace", "delete"):
+            self.highlight()
             self.event_generate("<<ContentChanged>>")
 
         return result
 
-    def _setup_tags(self, tags: dict[str, str]) -> None:
+    @return_self
+    def _setup_tags(self, tags: dict[str, str]) -> CodeView:
         for key, value in tags.items():
             if isinstance(value, str):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
-    def highlight_line(self, index: str) -> None:
-        line_num = int(self.index(index).split(".")[0])
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, f"{line_num}.0", f"{line_num}.end")
+    @return_self
+    def highlight(self) -> CodeView:
+        # Only highlights the visible area
+        
+        # Get visible area, text, and line offset
+        visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
+        visible_text: str = self.get(*visible_area)
+        line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")
 
-        line_text = self.get(f"{line_num}.0", f"{line_num}.end")
-        start_col = 0
+        # Update MLCDS tags where necessary
 
-        for token, text in lex(line_text, self._lexer()):
-            token = str(token)
-            end_col = start_col + len(text)
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, f"{line_num}.{start_col}", f"{line_num}.{end_col}")
-            start_col = end_col
-
-    def highlight_all(self) -> None:
+        # Remove Token tags from 1.0 to end (MLCDS - Multi Line Comment | Docstring tag is not removed)
         for tag in self.tag_names(index=None):
             if tag.startswith("Token"):
                 self.tag_remove(tag, "1.0", "end")
 
-        lines = self.get("1.0", "end")
-        line_offset = lines.count("\n") - lines.lstrip().count("\n")
-        start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
+        # Work with MLCDS tags, add the necessary ends and starts to visible_text
+        # Then lex the visible_text
+        # Splice the tags to remove parts that are not visible (columns to the left or right of the visible area)
+        # Then add the tags to the text widget
 
-        for token, text in lex(lines, self._lexer()):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} chars")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
 
-    def highlight_area(self, start_line: int | None = None, end_line: int | None = None) -> None:
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.tag_remove(tag, f"{start_line}.0", f"{end_line}.end")
-
-        text = self.get(f"{start_line}.0", f"{end_line}.end")
-        line_offset = text.count("\n") - text.lstrip().count("\n")
-        start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
-        for token, text in lex(text, self._lexer()):
-            token = str(token)
-            end_index = self.index(f"{start_index} + {len(text)} indices")
-            if token not in {"Token.Text.Whitespace", "Token.Text"}:
-                self.tag_add(token, start_index, end_index)
-            start_index = end_index
-
-    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
+    @return_self
+    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> CodeView:
         if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
             color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
@@ -196,20 +162,23 @@ class CodeView(Text):
         self.configure(**config)
         self._setup_tags(tags)
 
-        self.highlight_all()
+        self.highlight()
 
-    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> None:
+    @return_self
+    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> CodeView:
         self._lexer = lexer
 
-        self.highlight_all()
+        self.highlight()
 
-    def __setitem__(self, key: str, value) -> None:
+    @return_self
+    def __setitem__(self, key: str, value) -> CodeView:
         self.configure(**{key: value})
 
     def __getitem__(self, key: str) -> Any:
         return self.cget(key)
 
-    def configure(self, **kwargs) -> None:
+    @return_self
+    def configure(self, **kwargs) -> CodeView:
         lexer = kwargs.pop("lexer", None)
         color_scheme = kwargs.pop("color_scheme", None)
 
@@ -223,22 +192,28 @@ class CodeView(Text):
 
     config = configure
 
-    def pack(self, *args, **kwargs) -> None:
+    @return_self
+    def pack(self, *args, **kwargs) -> CodeView:
         self._frame.pack(*args, **kwargs)
 
-    def grid(self, *args, **kwargs) -> None:
+    @return_self
+    def grid(self, *args, **kwargs) -> CodeView:
         self._frame.grid(*args, **kwargs)
 
-    def place(self, *args, **kwargs) -> None:
+    @return_self
+    def place(self, *args, **kwargs) -> CodeView:
         self._frame.place(*args, **kwargs)
 
-    def pack_forget(self) -> None:
+    @return_self
+    def pack_forget(self) -> CodeView:
         self._frame.pack_forget()
 
-    def grid_forget(self) -> None:
+    @return_self
+    def grid_forget(self) -> CodeView:
         self._frame.grid_forget()
 
-    def place_forget(self) -> None:
+    @return_self
+    def place_forget(self) -> CodeView:
         self._frame.place_forget()
 
     def destroy(self) -> None:
@@ -246,13 +221,17 @@ class CodeView(Text):
             BaseWidget.destroy(widget)
         BaseWidget.destroy(self._frame)
 
+    @return_self
     def horizontal_scroll(self, first: str | float, last: str | float) -> CodeView:
         self._hs.set(first, last)
 
+    @return_self
     def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
+        self.highlight()
         self._vs.set(first, last)
         self._line_numbers.redraw()
 
+    @return_self
     def scroll_line_update(self, event: Event | None = None) -> CodeView:
         self.horizontal_scroll(*self.xview())
         self.vertical_scroll(*self.yview())

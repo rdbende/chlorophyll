@@ -131,3 +131,6 @@ dmypy.json
 # Mac stuff
 .DS_Store
 chlorophyll/.DS_Store
+
+# Extras for development
+test.py
