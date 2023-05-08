@@ -12,6 +12,11 @@ _editor_keys_map = {
     "highlightthickness": "focus_border_width",
 }
 
+_extras = {
+    "Error": "error",
+    "Literal.Date": "date",
+}
+
 _keywords = {
     "Keyword.Constant": "constant",
     "Keyword.Declaration": "declaration",
@@ -44,6 +49,7 @@ _names = {
 
 _strings = {
     "Literal.String.Affix": "affix",
+    "Literal.String.Backtick": "backtick",
     "Literal.String.Char": "char",
     "Literal.String.Delimeter": "delimeter",
     "Literal.String.Doc": "doc",
@@ -72,6 +78,14 @@ _comments = {
     "Comment.PreprocFile": "preprocfile",
     "Comment.Single": "single",
     "Comment.Special": "special",
+}
+
+_generic = {
+    "Generic.Emph": "emph",
+    "Generic.Error": "error",
+    "Generic.Heading": "heading",
+    "Generic.Strong": "strong",
+    "Generic.Subheading": "subheading",
 }
 
 
@@ -136,5 +150,7 @@ def _parse_scheme(color_scheme: dict[str, dict[str, str | int]]) -> tuple[dict, 
     tags.update(**_parse_table(color_scheme.get("string"), _strings, general_string))
     tags.update(**_parse_table(color_scheme.get("number"), _numbers))
     tags.update(**_parse_table(color_scheme.get("comment"), _comments, general_comment))
+    tags.update(**_parse_table(color_scheme.get("generic"), _generic))
+    tags.update(**_parse_table(color_scheme.get("extras"), _extras))
 
     return editor, tags
