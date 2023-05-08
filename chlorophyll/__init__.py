@@ -1,1 +1,1 @@
-from .codeview import CodeView
+from .codeview import CodeView  # noqa: F401

@@ -6,8 +6,10 @@ from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any
 
-from pygments import lex
 import pygments.lexers
+from pygments import lex  # noqa: F401
+
+# Currently not used while the highlight method is not implemented
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 from toml import load
@@ -16,12 +18,7 @@ from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
-def return_self(func):
-    def wrapper(self=None, *args, **kwargs):
-        func(self, *args, **kwargs)
-        return self
 
-    return wrapper
 class CodeView(Text):
     _w: str
     _builtin_color_schemes = {"ayu-dark", "ayu-light", "dracula", "mariana", "monokai"}
@@ -70,6 +67,7 @@ class CodeView(Text):
         self.tk.call("rename", self._w, self._orig)
         self.tk.createcommand(self._w, self._cmd_proxy)
 
+        self.tag_configure("MLCDS")
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
 
@@ -78,8 +76,7 @@ class CodeView(Text):
         self.mark_set("insert", "end")
         return "break"
 
-    @return_self
-    def redo(self, event: Event | None = None) -> CodeView:
+    def redo(self, event: Event | None = None) -> None:
         try:
             self.edit_redo()
         except TclError:
@@ -121,20 +118,39 @@ class CodeView(Text):
 
         return result
 
-    @return_self
-    def _setup_tags(self, tags: dict[str, str]) -> CodeView:
+    def _setup_tags(self, tags: dict[str, str]) -> None:
         for key, value in tags.items():
             if isinstance(value, str):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
-    @return_self
-    def highlight(self) -> CodeView:
-        # Only highlights the visible area
-        
+    def highlight(self) -> None:
+        """
+        Plan:
+        1. Create a new tag named "MLCDS" to remember where Docstrings (DS), Multi Line Comments (MLCs),
+        and backstick code areas (markdown) start and end. This tag should not start with "Token" so
+        that it is not deleted later.
+        2. Make a method that takes the tokens and tags and areas to remove and returns the tags without
+        those areas.
+        3. When highlight() runs, check if anything has changed in the text widget. If not, return.
+        (Things to look for include viewable area, text, and so on.)
+        4. Update the code to add MLCDS tags to the text widget where necessary. If a line starts or
+        ends with a Docstring or MLC, add an MLCDS tag to the entire line.
+        5. When the visible area of the text widget changes, get the visible area, visible text, and
+        line offset, as before.
+        6. Work with the MLCDS tags to add the necessary starts and ends to the visible text and then lex
+        it using Pygments.
+        7. Splice the tags to remove parts that are not visible (columns to the left or right of the visible
+        area) and remove any tags that are on emoji characters.
+        8. Add the remaining tags to the visible text and display it in the text widget.
+        9. Not in method: update the docs when this is done.
+        10. Also not in method: Make sure that when typing, the typing area is viewable (see()).
+        """
+
         # Get visible area, text, and line offset
         visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
         visible_text: str = self.get(*visible_area)
-        line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")
+        line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")  # noqa: F841
+        # Not used yet (remove F841 when used)
 
         # Update MLCDS tags where necessary
 
@@ -143,15 +159,7 @@ class CodeView(Text):
             if tag.startswith("Token"):
                 self.tag_remove(tag, "1.0", "end")
 
-        # Work with MLCDS tags, add the necessary ends and starts to visible_text
-        # Then lex the visible_text
-        # Splice the tags to remove parts that are not visible (columns to the left or right of the visible area)
-        # Remove any tags that are on emoji characters
-        # Then add the tags to the text widget
-
-
-    @return_self
-    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> CodeView:
+    def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
         if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
             color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
@@ -165,21 +173,18 @@ class CodeView(Text):
 
         self.highlight()
 
-    @return_self
-    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> CodeView:
+    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> None:
         self._lexer = lexer
 
         self.highlight()
 
-    @return_self
-    def __setitem__(self, key: str, value) -> CodeView:
+    def __setitem__(self, key: str, value) -> None:
         self.configure(**{key: value})
 
     def __getitem__(self, key: str) -> Any:
         return self.cget(key)
 
-    @return_self
-    def configure(self, **kwargs) -> CodeView:
+    def configure(self, **kwargs) -> None:
         lexer = kwargs.pop("lexer", None)
         color_scheme = kwargs.pop("color_scheme", None)
 
@@ -193,28 +198,22 @@ class CodeView(Text):
 
     config = configure
 
-    @return_self
-    def pack(self, *args, **kwargs) -> CodeView:
+    def pack(self, *args, **kwargs) -> None:
         self._frame.pack(*args, **kwargs)
 
-    @return_self
-    def grid(self, *args, **kwargs) -> CodeView:
+    def grid(self, *args, **kwargs) -> None:
         self._frame.grid(*args, **kwargs)
 
-    @return_self
-    def place(self, *args, **kwargs) -> CodeView:
+    def place(self, *args, **kwargs) -> None:
         self._frame.place(*args, **kwargs)
 
-    @return_self
-    def pack_forget(self) -> CodeView:
+    def pack_forget(self) -> None:
         self._frame.pack_forget()
 
-    @return_self
-    def grid_forget(self) -> CodeView:
+    def grid_forget(self) -> None:
         self._frame.grid_forget()
 
-    @return_self
-    def place_forget(self) -> CodeView:
+    def place_forget(self) -> None:
         self._frame.place_forget()
 
     def destroy(self) -> None:
@@ -222,17 +221,14 @@ class CodeView(Text):
             BaseWidget.destroy(widget)
         BaseWidget.destroy(self._frame)
 
-    @return_self
-    def horizontal_scroll(self, first: str | float, last: str | float) -> CodeView:
+    def horizontal_scroll(self, first: str | float, last: str | float) -> None:
         self._hs.set(first, last)
 
-    @return_self
-    def vertical_scroll(self, first: str | float, last: str | float) -> CodeView:
+    def vertical_scroll(self, first: str | float, last: str | float) -> None:
         self.highlight()
         self._vs.set(first, last)
         self._line_numbers.redraw()
 
-    @return_self
-    def scroll_line_update(self, event: Event | None = None) -> CodeView:
+    def scroll_line_update(self, event: Event | None = None) -> None:
         self.horizontal_scroll(*self.xview())
         self.vertical_scroll(*self.yview())
