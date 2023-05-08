@@ -146,6 +146,7 @@ class CodeView(Text):
         # Work with MLCDS tags, add the necessary ends and starts to visible_text
         # Then lex the visible_text
         # Splice the tags to remove parts that are not visible (columns to the left or right of the visible area)
+        # Remove any tags that are on emoji characters
         # Then add the tags to the text widget
 
 
