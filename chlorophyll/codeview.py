@@ -17,6 +17,7 @@ from .schemeparser import _parse_scheme
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
 
+
 class CodeView(Text):
     _w: str
     _builtin_color_schemes = {"ayu-dark", "ayu-light", "dracula", "mariana", "monokai"}
@@ -24,7 +25,7 @@ class CodeView(Text):
     def __init__(
         self,
         master: Misc | None = None,
-        lexer: pygments.lexers.Lexer = pygments.lexers.TextLexer,
+        lexer: type[pygments.lexers.Lexer] = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         **kwargs,
@@ -198,7 +199,7 @@ class CodeView(Text):
 
         self.highlight_all()
 
-    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> None:
+    def _set_lexer(self, lexer: type[pygments.lexers.Lexer]) -> None:
         self._lexer = lexer
 
         self.highlight_all()
