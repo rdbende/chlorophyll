@@ -1,21 +1,23 @@
 from __future__ import annotations
 
+import inspect
 from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
-from typing import Any
+from typing import Any, Type, Union
 
-from pygments import lex
+import toml
+import pygments
 import pygments.lexers
 from pyperclip import copy
 from tklinenums import TkLineNumbers
-from toml import load
 
 from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
+LexerType = Union[Type[pygments.lexers.Lexer], pygments.lexers.Lexer]
 
 
 class CodeView(Text):
@@ -25,7 +27,7 @@ class CodeView(Text):
     def __init__(
         self,
         master: Misc | None = None,
-        lexer: type[pygments.lexers.Lexer] = pygments.lexers.TextLexer,
+        lexer: LexerType = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         **kwargs,
@@ -147,7 +149,7 @@ class CodeView(Text):
         line_text = self.get(f"{line_num}.0", f"{line_num}.end")
         start_col = 0
 
-        for token, text in lex(line_text, self._lexer()):
+        for token, text in pygments.lex(line_text, self._lexer):
             token = str(token)
             end_col = start_col + len(text)
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
@@ -163,7 +165,7 @@ class CodeView(Text):
         line_offset = lines.count("\n") - lines.lstrip().count("\n")
         start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
 
-        for token, text in lex(lines, self._lexer()):
+        for token, text in pygments.lex(lines, self._lexer):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} chars")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
@@ -178,7 +180,7 @@ class CodeView(Text):
         text = self.get(f"{start_line}.0", f"{end_line}.end")
         line_offset = text.count("\n") - text.lstrip().count("\n")
         start_index = str(self.tk.call(self._orig, "index", f"{start_line}.0 + {line_offset} lines"))
-        for token, text in lex(text, self._lexer()):
+        for token, text in pygments.lex(text, self._lexer):
             token = str(token)
             end_index = self.index(f"{start_index} + {len(text)} indices")
             if token not in {"Token.Text.Whitespace", "Token.Text"}:
@@ -187,9 +189,9 @@ class CodeView(Text):
 
     def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
         if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
-            color_scheme = load(color_schemes_dir / f"{color_scheme}.toml")
+            color_scheme = toml.load(color_schemes_dir / f"{color_scheme}.toml")
         elif color_scheme is None:
-            color_scheme = load(color_schemes_dir / "dracula.toml")
+            color_scheme = toml.load(color_schemes_dir / "dracula.toml")
 
         assert isinstance(color_scheme, dict), "Must be a dictionary or a built-in color scheme"
 
@@ -199,9 +201,8 @@ class CodeView(Text):
 
         self.highlight_all()
 
-    def _set_lexer(self, lexer: type[pygments.lexers.Lexer]) -> None:
-        self._lexer = lexer
-
+    def _set_lexer(self, lexer: LexerType) -> None:
+        self._lexer = lexer() if inspect.isclass(lexer) else lexer
         self.highlight_all()
 
     def __setitem__(self, key: str, value) -> None:
