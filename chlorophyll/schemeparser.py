@@ -81,7 +81,7 @@ _comments = {
 }
 
 _generic = {
-    "Generic.Emph": "emph",
+    "Generic.Emph": "emphasis",
     "Generic.Error": "error",
     "Generic.Heading": "heading",
     "Generic.Strong": "strong",
