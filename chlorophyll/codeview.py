@@ -5,11 +5,11 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
-from typing import Any
+from typing import Any, Callable
 
-import toml
 import pygments
 import pygments.lexers
+import toml
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 
@@ -30,6 +30,7 @@ class CodeView(Text):
         lexer: pygments.lexers.Lexer = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
+        linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -42,7 +43,9 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
+        self._line_numbers = TkLineNumbers(
+            self._frame, self, justify=kwargs.get("justify", "left"), colors=linenums_theme
+        )
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
