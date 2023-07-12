@@ -5,7 +5,7 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
-from typing import Any, Callable, Type, Union
+from typing import Any, Type, Union
 
 import pygments
 import pygments.lexers
