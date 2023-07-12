@@ -5,7 +5,7 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
-from typing import Any, Callable
+from typing import Any, Callable, Type, Union
 
 import pygments
 import pygments.lexers
@@ -17,7 +17,7 @@ from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
-# LexerType = Union[Type[pygments.lexers.Lexer], pygments.lexers.Lexer]
+LexerType = Union[Type[pygments.lexer.Lexer], pygments.lexer.Lexer]
 
 
 class CodeView(Text):
@@ -27,7 +27,7 @@ class CodeView(Text):
     def __init__(
         self,
         master: Misc | None = None,
-        lexer: pygments.lexers.Lexer = pygments.lexers.TextLexer,
+        lexer: LexerType = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
@@ -205,7 +205,7 @@ class CodeView(Text):
 
         self.highlight_all()
 
-    def _set_lexer(self, lexer: pygments.lexers.Lexer) -> None:
+    def _set_lexer(self, lexer: LexerType) -> None:
         self._lexer = lexer() if inspect.isclass(lexer) else lexer
         self.highlight_all()
 
