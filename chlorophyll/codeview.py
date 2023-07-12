@@ -30,7 +30,6 @@ class CodeView(Text):
         lexer: LexerType = pygments.lexers.TextLexer,
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
-        linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -43,9 +42,7 @@ class CodeView(Text):
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
-        self._line_numbers = TkLineNumbers(
-            self._frame, self, justify=kwargs.get("justify", "left"), colors=linenums_theme
-        )
+        self._line_numbers = TkLineNumbers(self._frame, self, justify=kwargs.get("justify", "left"))
         self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
         self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
@@ -66,7 +63,6 @@ class CodeView(Text):
         super().bind(f"<{contmand}-a>", self._select_all, add=True)
         super().bind(f"<{contmand}-Shift-Z>", self.redo, add=True)
         super().bind("<<ContentChanged>>", self.scroll_line_update, add=True)
-        super().bind("<Button-1>", self._line_numbers.redraw, add=True)
 
         self._orig = f"{self._w}_widget"
         self.tk.call("rename", self._w, self._orig)
