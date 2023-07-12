@@ -6,7 +6,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="chlorophyll",
-    version="0.3.1",
+    version="0.4.0",
     description="A module that fills your code with color - syntax highlighted text box widget for Tkinter.",
     author="rdbende",
     author_email="rdbende@gmail.com",
@@ -26,6 +26,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Typing :: Typed",
     ],
     packages=["chlorophyll"],
