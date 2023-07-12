@@ -7,9 +7,9 @@ from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any, Type, Union
 
-import toml
 import pygments
 import pygments.lexers
+import toml
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 
@@ -17,7 +17,7 @@ from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
 
-LexerType = Union[Type[pygments.lexers.Lexer], pygments.lexers.Lexer]
+LexerType = Union[Type[pygments.lexer.Lexer], pygments.lexer.Lexer]
 
 
 class CodeView(Text):
