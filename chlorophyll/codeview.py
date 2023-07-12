@@ -8,6 +8,7 @@ from tkinter.font import Font
 from typing import Any, Callable, Type, Union
 
 import pygments
+import pygments.lexer
 import pygments.lexers
 import toml
 from pyperclip import copy
