@@ -8,12 +8,13 @@ Chlorophyll provides the `CodeView` widget for tkinter, which is a `Text` widget
 
 
 ## Installation
-Install from pip 
 `pip install chlorophyll`
 
-Install from source
+## Development install
+
+First, fork the repo, then run these commands in your terminal (assuming, you're on Linux or a Mac, I don't know crap about Windows)
 ```console
-git clone https://github.com/rdbende/chlorophyll.git
+git clone https://github.com/your-username/chlorophyll
 cd chlorophyll
 python3 -m venv env
 source env/bin/activate
