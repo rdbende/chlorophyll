@@ -8,8 +8,19 @@ Chlorophyll provides the `CodeView` widget for tkinter, which is a `Text` widget
 
 
 ## Installation
-
+Install from pip 
 `pip install chlorophyll`
+
+Install from source
+```console
+git clone https://github.com/rdbende/chlorophyll.git
+cd chlorophyll
+python3 -m venv env
+source env/bin/activate
+pip install -e .
+```
+
+------
 
 # Documentation
 
