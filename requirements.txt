@@ -1,3 +1,4 @@
 tklinenums>=1.6.3
 pyperclip
 toml
+pygments
