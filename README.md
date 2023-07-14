@@ -6,7 +6,6 @@
 ## Description
 Chlorophyll provides the `CodeView` widget for tkinter, which is a `Text` widget with syntax highlighting, line numbers, and works as a simple code editor. It is written in Python and uses the [`pygments`](https://pygments.org/) library for syntax highlighting and the [`TkLineNums`](https://www.github.com/Moosems/TkLineNums) module for line numbers.
 
-
 ## Installation
 `pip install chlorophyll`
 
@@ -29,7 +28,7 @@ pip install -e .
 |lexer        |The Language lexer              |Pygments lexer                                |
 |color_scheme |A color scheme for the code     |Dict, string, or toml file                    |
 |tab_width    |The width of a tab (`\t`)       |Int                                           |
-|**kwargs      |Keyword arguments for the widget|Any keyword arguments given to a `Text` widget|
+|**kwargs     |Keyword arguments for the widget|Any keyword arguments given to a `Text` widget|
 
 #### Basic Usage:
 ```python
