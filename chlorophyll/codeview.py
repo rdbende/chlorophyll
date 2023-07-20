@@ -4,13 +4,10 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
 from tkinter.font import Font
-from _tkinter import Tcl_Obj
 from typing import Any
 
 import pygments.lexers
-from pygments import lex  # noqa: F401
 
-# Currently not used while the highlight method is not implemented
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 from toml import load
@@ -78,10 +75,9 @@ class CodeView(Text):
 
         # Create any necessary variables
         self._current_text: str = self.get("1.0", "end-1c")
-        self._current_visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
+        self._current_visible_area: tuple[str, str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
 
         # Set up the lexer and color scheme along with the MLCDS tag
-        self.tag_configure("MLCDS")
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
 
@@ -138,27 +134,7 @@ class CodeView(Text):
                 self.tag_configure(f"Token.{key}", foreground=value)
 
     def highlight(self) -> None:
-        """
-        Plan:
-        1. Create a new tag named "MLCDS" to remember where Docstrings (DS), Multi Line Comments (MLCs),
-        and backstick code areas (markdown) start and end. This tag should not start with "Token" so
-        that it is not deleted later.
-        2. Make a method that takes the tokens and tags and areas to remove and returns the tags without
-        those areas.
-        3. When highlight() runs, check if anything has changed in the text widget. If not, return.
-        (Things to look for include viewable area, text, and so on.)
-        4. Update the code to add MLCDS tags to the text widget where necessary. If a line starts or
-        ends with a Docstring or MLC, add an MLCDS tag to the entire line.
-        5. When the visible area of the text widget changes, get the visible area, visible text, and
-        line offset, as before.
-        6. Work with the MLCDS tags to add the necessary starts and ends to the visible text and then lex
-        it using Pygments.
-        7. Splice the tags to remove parts that are not visible (columns to the left or right of the visible
-        area) and remove any tags that are on emoji characters.
-        8. Add the remaining tags to the visible text and display it in the text widget.
-        9. Not in method: update the docs when this is done.
-        10. Also not in method: Make sure that when typing, the typing area is viewable (see()).
-        """
+        """Highlights all the visible text in the text widget"""
 
         # Get visible area and text
         visible_area: tuple[str] = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
@@ -168,20 +144,27 @@ class CodeView(Text):
         if visible_area == self._current_visible_area and visible_text == self._current_text:
             return
 
+        self._current_text = visible_text
+
         # Get line offset
-        line_offset: int = visible_text.count("\n") - visible_text.lstrip().count("\n")  # noqa: F841
+        line_offset: int = int(self.index("@0,0").split(".")[0]) - 1
         # Not used yet (remove F841 when used)
 
-        # Update MLCDS tags if necessary
-        for tag in ("Token.Literal.String.Doc", "Token.Comment.Multiline", "Token.Literal.String.Backtick"):
-            # Check if any of them are in the visible area
-            tag_ranges: tuple[Tcl_Obj]= self.tag_ranges(tag)
-
-
-        # Remove Token tags from 1.0 to end (MLCDS - Multi Line Comment | Docstring tag is not removed)
-        for tag in self.tag_names(index=None):
-            if tag.startswith("Token"):
+        # Remove all tags
+        for tag in self.tag_names():
+            if tag.startswith("Token."):
                 self.tag_remove(tag, "1.0", "end")
+
+        # Highlight the text
+        start_index = str(self.tk.call(self._orig, "index", f"1.0 + {line_offset} lines"))
+        for token, text in pygments.lex(visible_text, self._lexer):
+            token = str(token)
+            end_index = self.index(f"{start_index} + {len(text)} chars")
+            if token not in {"Token.Text.Whitespace", "Token.Text"}:
+                self.tag_add(token, start_index, end_index)
+            start_index = end_index
+
+        self._current_visible_area = visible_area
 
     def _set_color_scheme(self, color_scheme: dict[str, dict[str, str | int]] | str | None) -> None:
         if isinstance(color_scheme, str) and color_scheme in self._builtin_color_schemes:
@@ -249,10 +232,11 @@ class CodeView(Text):
         self._hs.set(first, last)
 
     def vertical_scroll(self, first: str | float, last: str | float) -> None:
+        self._current_visible_area = self.index("@0,0"), self.index(f"@0,{self.winfo_height()}")
         self.highlight()
         self._vs.set(first, last)
         self._line_numbers.redraw()
 
-    def scroll_line_update(self, event: Event | None = None) -> None:
+    def scroll_line_update(self, _: Event | None = None) -> None:
         self.horizontal_scroll(*self.xview())
         self.vertical_scroll(*self.yview())
