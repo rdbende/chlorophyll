@@ -14,6 +14,7 @@ import toml
 from pyperclip import copy
 from tklinenums import TkLineNumbers
 
+from .scrollbar import Scrollbar
 from .schemeparser import _parse_scheme
 
 color_schemes_dir = Path(__file__).parent / "colorschemes"
@@ -47,8 +48,8 @@ class CodeView(Text):
         self._line_numbers = TkLineNumbers(
             self._frame, self, justify=kwargs.get("justify", "left"), colors=linenums_theme
         )
-        self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
-        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
+        self._vs = Scrollbar(self._frame, orient="vertical", command=self.yview)
+        self._hs = Scrollbar(self._frame, orient="horizontal", command=self.xview)
 
         self._line_numbers.grid(row=0, column=0, sticky="ns")
         self._vs.grid(row=0, column=2, sticky="ns")
