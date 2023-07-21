@@ -28,7 +28,7 @@ pip install -e .
 |lexer             |The Language lexer              |Pygments lexer                                |
 |color_scheme      |A color scheme for the code     |Dict, string, or toml file                    |
 |tab_width         |The width of a tab (`\t`)       |Int                                           |
-|autohide_scrollbar|Auto hide scrollbars            |Bool                                           |
+|autohide_scrollbar|Auto hide scrollbars            |Bool                                          |
 |**kwargs          |Keyword arguments for the widget|Any keyword arguments given to a `Text` widget|
 
 #### Basic Usage:
