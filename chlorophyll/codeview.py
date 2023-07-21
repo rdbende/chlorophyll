@@ -21,6 +21,20 @@ color_schemes_dir = Path(__file__).parent / "colorschemes"
 LexerType = Union[Type[pygments.lexer.Lexer], pygments.lexer.Lexer]
 
 
+class Scrollbar(ttk.Scrollbar):
+    def __init__(self, master: CodeView, autohide: bool, *args, **kwargs) -> None:
+        super().__init__(master, *args, **kwargs)
+        self.autohide = autohide
+
+    def set(self, low: str, high: str) -> None:
+        if self.autohide:
+            if float(low) <= 0.0 and float(high) >= 1.0:
+                self.grid_remove()
+            else:
+                self.grid()
+        super().set(low, high)
+
+
 class CodeView(Text):
     _w: str
     _builtin_color_schemes = {"ayu-dark", "ayu-light", "dracula", "mariana", "monokai"}
@@ -32,6 +46,7 @@ class CodeView(Text):
         color_scheme: dict[str, dict[str, str | int]] | str | None = None,
         tab_width: int = 4,
         linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
+        autohide_scrollbar: bool = False,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -47,8 +62,8 @@ class CodeView(Text):
         self._line_numbers = TkLineNumbers(
             self._frame, self, justify=kwargs.get("justify", "left"), colors=linenums_theme
         )
-        self._vs = ttk.Scrollbar(self._frame, orient="vertical", command=self.yview)
-        self._hs = ttk.Scrollbar(self._frame, orient="horizontal", command=self.xview)
+        self._vs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="vertical", command=self.yview)
+        self._hs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="horizontal", command=self.xview)
 
         self._line_numbers.grid(row=0, column=0, sticky="ns")
         self._vs.grid(row=0, column=2, sticky="ns")
