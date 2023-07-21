@@ -26,7 +26,7 @@ class Scrollbar(ttk.Scrollbar):
         super().__init__(master, *args, **kwargs)
         self.autohide = autohide
 
-    def set(self, low, high):
+    def set(self, low: str, high: str) -> None:
         if self.autohide:
             if float(low) <= 0.0 and float(high) >= 1.0:
                 self.grid_remove()
