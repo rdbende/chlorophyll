@@ -32,7 +32,7 @@ class Scrollbar(ttk.Scrollbar):
                 self.grid_remove()
             else:
                 self.grid()
-        ttk.Scrollbar.set(self, low, high)
+        super().set(low, high)
 
 
 class CodeView(Text):
