@@ -29,7 +29,7 @@ pip install -e .
 |color_scheme      |A color scheme for the code     |Dict, string, or toml file                    |
 |tab_width         |The width of a tab (`\t`)       |Int                                           |
 |autohide_scrollbar|Auto hide scrollbars            |Bool                                          |
-|linenum_border    |Line Number Border Width        |Int                                           |
+|linenums_border   |Border width of the line numbers|Int                                           |
 |**kwargs          |Keyword arguments for the widget|Any keyword arguments given to a `Text` widget|
 
 #### Basic Usage:

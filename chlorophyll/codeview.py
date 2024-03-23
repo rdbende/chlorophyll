@@ -47,7 +47,7 @@ class CodeView(Text):
         tab_width: int = 4,
         linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
         autohide_scrollbar: bool = True,
-        linenum_border = 0,
+        linenums_border: int = 0,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -65,7 +65,7 @@ class CodeView(Text):
             self,
             justify=kwargs.get("justify", "left"),
             colors=linenums_theme,
-            borderwidth=kwargs.get("borderwidth", linenum_border)
+            borderwidth=kwargs.get("borderwidth", linenums_border)
         )
         self._vs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="vertical", command=self.yview)
         self._hs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="horizontal", command=self.xview)
