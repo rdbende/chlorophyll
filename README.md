@@ -30,6 +30,7 @@ pip install -e .
 |tab_width         |The width of a tab (`\t`)       |Int                                           |
 |autohide_scrollbar|Auto hide scrollbars            |Bool                                          |
 |linenums_border   |Border width of the line numbers|Int                                           |
+|context_menu      |Enable context menus in CodeView|Bool                                          |
 |**kwargs          |Keyword arguments for the widget|Any keyword arguments given to a `Text` widget|
 
 #### Basic Usage:
