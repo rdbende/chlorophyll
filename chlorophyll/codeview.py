@@ -104,7 +104,13 @@ class CodeView(Text):
     def context_menu(self) -> Menu:
         if self._context_menu is None:
             self._context_menu = self._create_context_menu()
-            super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+
+            if super().tk.call("tk", "windowingsystem") == "aqua":
+                super().bind("<Button-2>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+                super().bind("<Control-1>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+            else:
+                super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+
         return self._context_menu
     
     def _create_context_menu(self) -> Menu:
