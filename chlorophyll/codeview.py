@@ -104,7 +104,7 @@ class CodeView(Text):
     def context_menu(self) -> Menu:
         if self._context_menu is None:
             self._context_menu = self._create_context_menu()
-            super().bind("<Button-3>", lambda e:self._context_menu.tk_popup(e.x_root, e.y_root))
+            super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root, e.y_root))
         return self._context_menu
     
     @context_menu.setter
@@ -114,10 +114,10 @@ class CodeView(Text):
     def _create_context_menu(self) -> Menu:
         context_menu = Menu(self, tearoff=0)
         if self._default_context_menu:
-            context_menu.add_command(label="Undo", command=lambda:self.event_generate("<<Undo>>"))
-            context_menu.add_command(label="Redo", command=lambda:self.event_generate("<<Redo>>"))
+            context_menu.add_command(label="Undo", command=lambda: self.event_generate("<<Undo>>"))
+            context_menu.add_command(label="Redo", command=lambda: self.event_generate("<<Redo>>"))
             context_menu.add_separator()
-            context_menu.add_command(label="Cut", command=lambda:self.event_generate("<<Cut>>"))
+            context_menu.add_command(label="Cut", command=lambda: self.event_generate("<<Cut>>"))
             context_menu.add_command(label="Copy", command=self._copy)
             context_menu.add_command(label="Paste", command=self._paste)
             context_menu.add_command(label="Select all", command=self._select_all)
