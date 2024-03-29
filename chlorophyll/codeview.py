@@ -104,7 +104,7 @@ class CodeView(Text):
     def context_menu(self) -> Menu:
         if self._context_menu is None:
             self._context_menu = self._create_context_menu()
-            super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root, e.y_root))
+            super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
         return self._context_menu
     
     @context_menu.setter
