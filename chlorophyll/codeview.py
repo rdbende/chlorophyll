@@ -48,7 +48,7 @@ class CodeView(Text):
         linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
         autohide_scrollbar: bool = True,
         linenums_border: int = 0,
-        context_menu: bool = False,
+        default_context_menu: bool = False,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -81,16 +81,8 @@ class CodeView(Text):
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
         
-        if context_menu:
-            self.context_menu = Menu(self, tearoff=0)
-            self.context_menu.add_command(label="Undo", command=lambda:self.event_generate("<<Undo>>"))
-            self.context_menu.add_command(label="Redo", command=lambda:self.event_generate("<<Redo>>"))
-            self.context_menu.add_separator()
-            self.context_menu.add_command(label="Cut", command=lambda:self.event_generate("<<Cut>>"))
-            self.context_menu.add_command(label="Copy", command=self._copy)
-            self.context_menu.add_command(label="Paste", command=self._paste)
-            self.context_menu.add_command(label="Select all", command=self._select_all)
-            super().bind("<Button-3>", lambda e:self.context_menu.tk_popup(e.x_root, e.y_root))
+        self._context_menu = None
+        self._default_context_menu = default_context_menu
     
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
@@ -107,6 +99,29 @@ class CodeView(Text):
 
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
+
+    @property
+    def context_menu(self) -> Menu:
+        if self._context_menu is None:
+            self._context_menu = self._create_context_menu()
+            super().bind("<Button-3>", lambda e:self._context_menu.tk_popup(e.x_root, e.y_root))
+        return self._context_menu
+    
+    @context_menu.setter
+    def context_menu(self, value: Menu) -> None:
+        self._context_menu = value
+
+    def _create_context_menu(self) -> Menu:
+        context_menu = Menu(self, tearoff=0)
+        if self._default_context_menu:
+            context_menu.add_command(label="Undo", command=lambda:self.event_generate("<<Undo>>"))
+            context_menu.add_command(label="Redo", command=lambda:self.event_generate("<<Redo>>"))
+            context_menu.add_separator()
+            context_menu.add_command(label="Cut", command=lambda:self.event_generate("<<Cut>>"))
+            context_menu.add_command(label="Copy", command=self._copy)
+            context_menu.add_command(label="Paste", command=self._paste)
+            context_menu.add_command(label="Select all", command=self._select_all)
+        return context_menu
 
     def _select_all(self, *_) -> str:
         self.tag_add("sel", "1.0", "end")
