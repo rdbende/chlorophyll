@@ -83,7 +83,7 @@ class CodeView(Text):
         
         self._context_menu = None
         self._default_context_menu = default_context_menu
-    
+        if self._default_context_menu: self.context_menu    
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
         super().bind(f"<{contmand}-c>", self._copy, add=True)
