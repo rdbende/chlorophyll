@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from contextlib import suppress
 from pathlib import Path
-from tkinter import BaseWidget, Event, Misc, TclError, Text, ttk
+from tkinter import BaseWidget, Event, Menu, Misc, TclError, Text, ttk
 from tkinter.font import Font
 from typing import Any, Callable, Type, Union
 
@@ -48,6 +48,7 @@ class CodeView(Text):
         linenums_theme: Callable[[], tuple[str, str]] | tuple[str, str] | None = None,
         autohide_scrollbar: bool = True,
         linenums_border: int = 0,
+        default_context_menu: bool = False,
         **kwargs,
     ) -> None:
         self._frame = ttk.Frame(master)
@@ -80,6 +81,11 @@ class CodeView(Text):
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
 
+        self._context_menu = None
+        self._default_context_menu = default_context_menu
+        if default_context_menu:
+            self.context_menu
+
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
         super().bind(f"<{contmand}-c>", self._copy, add=True)
@@ -95,6 +101,36 @@ class CodeView(Text):
 
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
+
+    @property
+    def context_menu(self) -> Menu:
+        if self._context_menu is None:
+            self._context_menu = self._create_context_menu()
+
+        return self._context_menu
+
+    def _create_context_menu(self) -> Menu:
+        context_menu = Menu(self, tearoff=0)
+        popup_callback = lambda e: context_menu.tk_popup(e.x_root + 5, e.y_root + 5)
+
+        if self._windowingsystem == "aqua":
+            super().bind("<Button-2>", popup_callback)
+            super().bind("<Control-Button-1>", popup_callback)
+        else:
+            super().bind("<Button-3>", popup_callback)
+
+        if self._default_context_menu:
+            contmand = "⌘" if self._windowingsystem == "aqua" else "Ctrl"
+
+            context_menu.add_command(label="Undo", accelerator=f"{contmand}+Z", command=lambda: self.event_generate("<<Undo>>"))
+            context_menu.add_command(label="Redo", accelerator=f"{contmand}+Y", command=lambda: self.event_generate("<<Redo>>"))
+            context_menu.add_separator()
+            context_menu.add_command(label="Cut", accelerator=f"{contmand}+X", command=lambda: self.event_generate("<<Cut>>"))
+            context_menu.add_command(label="Copy", accelerator=f"{contmand}+C", command=self._copy)
+            context_menu.add_command(label="Paste", accelerator=f"{contmand}+V", command=self._paste)
+            context_menu.add_command(label="Select all", accelerator=f"{contmand}+A", command=self._select_all)
+
+        return context_menu
 
     def _select_all(self, *_) -> str:
         self.tag_add("sel", "1.0", "end")
