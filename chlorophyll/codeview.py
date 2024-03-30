@@ -80,10 +80,12 @@ class CodeView(Text):
             xscrollcommand=self.horizontal_scroll,
             tabs=Font(font=kwargs["font"]).measure(" " * tab_width),
         )
-        
+
         self._context_menu = None
         self._default_context_menu = default_context_menu
-        if self._default_context_menu: self.context_menu    
+        if default_context_menu:
+            self.context_menu
+
         contmand = "Command" if self._windowingsystem == "aqua" else "Control"
 
         super().bind(f"<{contmand}-c>", self._copy, add=True)
@@ -104,25 +106,30 @@ class CodeView(Text):
     def context_menu(self) -> Menu:
         if self._context_menu is None:
             self._context_menu = self._create_context_menu()
+            popup_callback = lambda e: self._context_menu.tk_popup(e.x_root + 5, e.y_root + 5)
 
-            if self.tk.call("tk", "windowingsystem") == "aqua":
-                super().bind("<Button-2>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
-                super().bind("<Control-1>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+            if self._windowingsystem == "aqua":
+                super().bind("<Button-2>", popup_callback)
+                super().bind("<Control-Button-1>", popup_callback)
             else:
-                super().bind("<Button-3>", lambda e: self._context_menu.tk_popup(e.x_root + 10, e.y_root + 10))
+                super().bind("<Button-3>", popup_callback)
 
         return self._context_menu
-    
+
     def _create_context_menu(self) -> Menu:
         context_menu = Menu(self, tearoff=0)
+
         if self._default_context_menu:
-            context_menu.add_command(label="Undo", command=lambda: self.event_generate("<<Undo>>"))
-            context_menu.add_command(label="Redo", command=lambda: self.event_generate("<<Redo>>"))
+            contmand = "⌘" if self._windowingsystem == "aqua" else "Ctrl"
+
+            context_menu.add_command(label="Undo", accelerator=f"{contmand}+Z", command=lambda: self.event_generate("<<Undo>>"))
+            context_menu.add_command(label="Redo", accelerator=f"{contmand}+Y", command=lambda: self.event_generate("<<Redo>>"))
             context_menu.add_separator()
-            context_menu.add_command(label="Cut", command=lambda: self.event_generate("<<Cut>>"))
-            context_menu.add_command(label="Copy", command=self._copy)
-            context_menu.add_command(label="Paste", command=self._paste)
-            context_menu.add_command(label="Select all", command=self._select_all)
+            context_menu.add_command(label="Cut", accelerator=f"{contmand}+X", command=lambda: self.event_generate("<<Cut>>"))
+            context_menu.add_command(label="Copy", accelerator=f"{contmand}+C", command=self._copy)
+            context_menu.add_command(label="Paste", accelerator=f"{contmand}+V", command=self._paste)
+            context_menu.add_command(label="Select all", accelerator=f"{contmand}+A", command=self._select_all)
+
         return context_menu
 
     def _select_all(self, *_) -> str:
