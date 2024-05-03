@@ -102,6 +102,8 @@ class CodeView(Text):
         self._set_lexer(lexer)
         self._set_color_scheme(color_scheme)
 
+        self._line_numbers.redraw()
+
     @property
     def context_menu(self) -> Menu:
         if self._context_menu is None:
