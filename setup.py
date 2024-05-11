@@ -6,11 +6,11 @@ with open("README.md", "r") as file:
 
 setup(
     name="chlorophyll",
-    version="0.4.1",
+    version="0.4.2",
     description="A module that fills your code with color - syntax highlighted text box widget for Tkinter.",
     author="rdbende",
     author_email="rdbende@gmail.com",
-    url="https://gitlab.com/rdbende/chlorophyll",
+    url="https://github.com/rdbende/chlorophyll",
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=["pygments", "toml", "tklinenums", "pyperclip"],
