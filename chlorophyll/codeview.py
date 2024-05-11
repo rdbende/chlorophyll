@@ -58,18 +58,22 @@ class CodeView(Text):
         kwargs.setdefault("wrap", "none")
         kwargs.setdefault("font", ("monospace", 11))
 
+        linenum_justify = kwargs.pop("justify", "left")
+
         super().__init__(self._frame, **kwargs)
         super().grid(row=0, column=1, sticky="nswe")
 
         self._line_numbers = TkLineNumbers(
             self._frame,
             self,
-            justify=kwargs.get("justify", "left"),
+            justify=linenum_justify,
             colors=linenums_theme,
-            borderwidth=kwargs.get("borderwidth", linenums_border)
+            borderwidth=kwargs.get("borderwidth", linenums_border),
         )
         self._vs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="vertical", command=self.yview)
-        self._hs = Scrollbar(self._frame, autohide=autohide_scrollbar, orient="horizontal", command=self.xview)
+        self._hs = Scrollbar(
+            self._frame, autohide=autohide_scrollbar, orient="horizontal", command=self.xview
+        )
 
         self._line_numbers.grid(row=0, column=0, sticky="ns")
         self._vs.grid(row=0, column=2, sticky="ns")
@@ -124,13 +128,21 @@ class CodeView(Text):
         if self._default_context_menu:
             contmand = "⌘" if self._windowingsystem == "aqua" else "Ctrl"
 
-            context_menu.add_command(label="Undo", accelerator=f"{contmand}+Z", command=lambda: self.event_generate("<<Undo>>"))
-            context_menu.add_command(label="Redo", accelerator=f"{contmand}+Y", command=lambda: self.event_generate("<<Redo>>"))
+            context_menu.add_command(
+                label="Undo", accelerator=f"{contmand}+Z", command=lambda: self.event_generate("<<Undo>>")
+            )
+            context_menu.add_command(
+                label="Redo", accelerator=f"{contmand}+Y", command=lambda: self.event_generate("<<Redo>>")
+            )
             context_menu.add_separator()
-            context_menu.add_command(label="Cut", accelerator=f"{contmand}+X", command=lambda: self.event_generate("<<Cut>>"))
+            context_menu.add_command(
+                label="Cut", accelerator=f"{contmand}+X", command=lambda: self.event_generate("<<Cut>>")
+            )
             context_menu.add_command(label="Copy", accelerator=f"{contmand}+C", command=self._copy)
             context_menu.add_command(label="Paste", accelerator=f"{contmand}+V", command=self._paste)
-            context_menu.add_command(label="Select all", accelerator=f"{contmand}+A", command=self._select_all)
+            context_menu.add_command(
+                label="Select all", accelerator=f"{contmand}+A", command=self._select_all
+            )
 
         return context_menu
 
